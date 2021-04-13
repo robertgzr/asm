@@ -50,11 +50,8 @@ var bakeCommand = &cli.Command{
 		if err != nil {
 			return err
 		}
-		if cx.Bool("debug") {
-			cfg.Debug = true
-		}
 
-		if cfg.Debug {
+		if cx.Bool("debug") {
 			logrus.SetLevel(logrus.DebugLevel)
 			logrus.Debug("debug output enabled")
 		}
@@ -79,6 +76,6 @@ var bakeCommand = &cli.Command{
 		}
 
 		contextPathHash, _ := os.Getwd()
-		return asm.Assemble(ctx, &cfg.NodeGroup, c, targets, cx.String("progress"), contextPathHash)
+		return asm.Assemble(ctx, &cfg, c, targets, cx.String("progress"), contextPathHash)
 	},
 }

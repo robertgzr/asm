@@ -7,10 +7,7 @@ import (
 	"github.com/docker/buildx/store"
 )
 
-type Config struct {
-	Debug     bool
-	NodeGroup store.NodeGroup
-}
+type Config = store.NodeGroup
 
 func Load(fn string) (cfg Config, err error) {
 	f, err := os.Open(fn)

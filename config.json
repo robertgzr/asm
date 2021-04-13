@@ -1,0 +1,13 @@
+{
+  "name": "default",
+  "driver": "docker",
+  "nodes": [
+    {
+      "name": "default",
+      "endpoint": "unix:///var/run/docker.sock",
+      "platforms": [
+        { "os": "linux", "architecture": "amd64" }
+      ]
+    }
+  ]
+}
