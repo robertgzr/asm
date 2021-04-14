@@ -81,7 +81,7 @@ func newOverrides(c *bake.Config, v []string) (map[string]*bake.Target, error) {
 				}
 			case "labels":
 				if len(keys) != 3 {
-					return nil, errors.Errorf("invalid key %s, lanels requires name", parts[0])
+					return nil, errors.Errorf("invalid key %s, labels requires name", parts[0])
 				}
 				if t.Labels == nil {
 					t.Labels = map[string]string{}
