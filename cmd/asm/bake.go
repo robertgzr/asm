@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"io"
+	"fmt"
 	"os"
 
 	"github.com/docker/buildx/bake"
@@ -26,15 +26,14 @@ var bakeCommand = &cli.Command{
 			Usage:   "config file with worker infos",
 			Value:   "config.json",
 		},
-		&cli.StringFlag{
-			Name:    "file",
-			Aliases: []string{"f"},
-			Usage:   "build definition file",
-			Value:   "compose.yaml",
+		&cli.StringSliceFlag{
+			Name:     "file",
+			Aliases:  []string{"f"},
+			Usage:    "build definition file",
+			Required: true,
 		},
-		&cli.StringFlag{
+		&cli.StringSliceFlag{
 			Name:  "set",
-			Value: "",
 			Usage: "override target value (eg: targetpattern.key=value)",
 		},
 		&cli.BoolFlag{
@@ -61,27 +60,32 @@ var bakeCommand = &cli.Command{
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		fn := cx.String("file")
-
 		targets := []string{"default"}
 		if cx.Args().Present() {
 			targets = cx.Args().Slice()
 		}
 
-		c, err := asm.ParseConfig(fn)
+		var files []bake.File
+		files, err = bake.ReadLocalFiles(cx.StringSlice("file"))
+		if err != nil {
+			return err
+		}
+
+		m, err := asm.ReadTargets(ctx, files, targets, cx.StringSlice("set"))
 		if err != nil {
 			return err
 		}
 
 		if cx.Bool("print") {
-			return printConfig(c, cx.App.Writer)
+			dt, err := json.MarshalIndent(map[string]map[string]*bake.Target{"target": m}, "", "   ")
+			if err != nil {
+				return err
+			}
+			fmt.Fprintln(cx.App.Writer, string(dt))
+			return nil
 		}
 
 		contextPathHash, _ := os.Getwd()
-		return asm.Assemble(ctx, &cfg, c, targets, cx.String("progress"), contextPathHash)
+		return asm.Assemble(ctx, &cfg, m, cx.String("progress"), contextPathHash)
 	},
-}
-
-func printConfig(c *bake.Config, w io.Writer) error {
-	return json.NewEncoder(w).Encode(c)
 }

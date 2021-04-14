@@ -1,10 +1,9 @@
 package asm
 
 import (
-	"encoding/json"
+	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"strings"
 
 	"github.com/docker/buildx/bake"
@@ -12,38 +11,51 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-func ParseConfig(fn string) (*bake.Config, error) {
-	var c *bake.Config
+type targetMap map[string]*bake.Target
 
-	dt, err := ioutil.ReadFile(fn)
+func ReadTargets(ctx context.Context, files []bake.File, targets, overrides []string) (targetMap, error) {
+	m, err := bake.ReadTargets(ctx, files, targets, overrides)
 	if err != nil {
-		return nil, err
+		if !strings.Contains(err.Error(), "unsupported Compose file version") {
+			return nil, err
+		}
+		m = make(targetMap)
 	}
 
-	fnl := strings.ToLower(fn)
-	if strings.HasSuffix(fnl, ".json") {
-		if err := json.Unmarshal(dt, c); err != nil {
-			return nil, err
-		}
-		return c, nil
-	}
-	if strings.HasSuffix(fnl, "docker-compose.yml") {
-		// TODO see if we want to extend this to all compose files
-		// strings.HasSuffix(fnl, ".yml") || strings.HasSuffix(".yaml")
-		v := make(map[string]interface{})
-		if err := yaml.Unmarshal(dt, &v); err != nil {
-			return nil, err
-		}
-		if verI, ok := v["version"]; ok {
-			if ver, ok := verI.(string); ok && strings.HasPrefix(ver, "2") {
-				logrus.Warnf("parse: compose version: %q, falling back to legacy parsing", ver)
-				return parseCompose(fnl, v)
+	for _, f := range files {
+		if strings.HasSuffix(f.Name, "docker-compose.yml") {
+			v := make(map[string]interface{})
+			if err := yaml.Unmarshal(f.Data, &v); err != nil {
+				return nil, err
+			}
+			if verI, ok := v["version"]; ok {
+				if ver, ok := verI.(string); ok && strings.HasPrefix(ver, "2") {
+					logrus.Warnf("parse: compose version: %q, falling back to legacy parsing", ver)
+					c, err := parseCompose(f.Name, v)
+					if err != nil {
+						return nil, err
+					}
+					o, err := newOverrides(c, overrides)
+					if err != nil {
+						return nil, err
+					}
+					for _, n := range targets {
+						for _, n := range c.ResolveGroup(n) {
+							t, err := c.ResolveTarget(n, o)
+							if err != nil {
+								return nil, err
+							}
+							if t != nil {
+								m[n] = t
+							}
+						}
+					}
+				}
 			}
 		}
 	}
 
-	// handled by upstream
-	return bake.ParseFile(dt, fn)
+	return m, nil
 }
 
 func parseCompose(fn string, v map[string]interface{}) (*bake.Config, error) {

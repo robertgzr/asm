@@ -16,19 +16,13 @@ import (
 	// _ "github.com/robertgzr/asm/driver/containerd"
 )
 
-func Assemble(ctx context.Context, ng *store.NodeGroup, conf *bake.Config, targets []string, progressMode, contextHash string) error {
+func Assemble(ctx context.Context, ng *store.NodeGroup, targets map[string]*bake.Target, progressMode, contextHash string) error {
 	logrus.WithFields(logrus.Fields{
-		"node_group":  ng,
-		"bake_config": conf,
+		"node_group": ng,
+		"targets":    targets,
 	}).Debug("starting assembly")
 
-	m, err := configToTargets(conf, targets)
-	if err != nil {
-		return err
-	}
-	logrus.WithField("config", m).Debug("resolved config")
-
-	bo, err := bake.TargetsToBuildOpt(m, nil)
+	bo, err := bake.TargetsToBuildOpt(targets, nil)
 	if err != nil {
 		return err
 	}
@@ -55,20 +49,4 @@ func Assemble(ctx context.Context, ng *store.NodeGroup, conf *bake.Config, targe
 
 	_, err = build.Build(ctx, dis, bo, nil, nil, printer)
 	return err
-}
-
-func configToTargets(c *bake.Config, targets []string) (map[string]*bake.Target, error) {
-	m := map[string]*bake.Target{}
-	for _, n := range targets {
-		for _, n := range c.ResolveGroup(n) {
-			t, err := c.ResolveTarget(n, nil)
-			if err != nil {
-				return nil, err
-			}
-			if t != nil {
-				m[n] = t
-			}
-		}
-	}
-	return m, nil
 }
