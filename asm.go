@@ -39,7 +39,16 @@ func Assemble(ctx context.Context, ng *store.NodeGroup, conf *bake.Config, targe
 
 	ctx2, cancel := context.WithCancel(context.TODO())
 	defer cancel()
-	pw := progress.NewPrinter(ctx2, os.Stderr, progressMode)
+
+	printer := progress.NewPrinter(ctx2, os.Stderr, progressMode)
+	defer func() {
+		if printer != nil {
+			err1 := printer.Wait()
+			if err == nil {
+				err = err1
+			}
+		}
+	}()
 
 	_, err = build.Build(ctx, dis, opts, nil, nil, pw)
 	return err
