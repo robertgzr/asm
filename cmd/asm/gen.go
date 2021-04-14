@@ -2,10 +2,10 @@ package main
 
 import (
 	"encoding/json"
-	"os"
 
 	"github.com/containerd/containerd/platforms"
 	"github.com/docker/buildx/store"
+	"github.com/docker/buildx/util/platformutil"
 	cli "github.com/urfave/cli/v2"
 )
 
@@ -43,19 +43,16 @@ var genDockerCommand = &cli.Command{
 			Name:     "docker daemon",
 			Endpoint: cx.String("host"),
 		}
-		for _, pl := range cx.StringSlice("platform") {
-			spec, err := platforms.Parse(pl)
-			if err != nil {
-				return err
-			}
-			node.Platforms = append(node.Platforms, spec)
+		specs, err := platformutil.Parse(cx.StringSlice("platform"))
+		if err != nil {
+			return err
 		}
+		node.Platforms = specs
 		config := store.NodeGroup{
 			Name:   "default",
 			Driver: "docker",
 			Nodes:  []store.Node{node},
 		}
-		err := json.NewEncoder(os.Stdout).Encode(config)
-		return err
+		return json.NewEncoder(cx.App.Writer).Encode(config)
 	},
 }

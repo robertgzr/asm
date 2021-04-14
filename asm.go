@@ -10,7 +10,10 @@ import (
 	"github.com/docker/buildx/util/progress"
 	"github.com/sirupsen/logrus"
 
-	"github.com/robertgzr/asm/util"
+	_ "github.com/docker/buildx/driver/docker"
+	_ "github.com/docker/buildx/driver/docker-container"
+	// _ "github.com/docker/buildx/driver/kubernetes"
+	// _ "github.com/robertgzr/asm/driver/containerd"
 )
 
 func Assemble(ctx context.Context, ng *store.NodeGroup, conf *bake.Config, targets []string, progressMode, contextHash string) error {
@@ -25,13 +28,13 @@ func Assemble(ctx context.Context, ng *store.NodeGroup, conf *bake.Config, targe
 	}
 	logrus.WithField("config", m).Debug("resolved config")
 
-	opts, err := bake.TargetsToBuildOpt(m)
+	bo, err := bake.TargetsToBuildOpt(m, nil)
 	if err != nil {
 		return err
 	}
-	logrus.WithField("opts", opts).Debug("resolved opts")
+	logrus.WithField("opts", bo).Debug("resolved opts")
 
-	dis, err := util.DriversForNodeGroup(ctx, ng, contextHash)
+	dis, err := DriversForNodeGroup(ctx, ng, contextHash)
 	if err != nil {
 		return err
 	}
@@ -50,7 +53,7 @@ func Assemble(ctx context.Context, ng *store.NodeGroup, conf *bake.Config, targe
 		}
 	}()
 
-	_, err = build.Build(ctx, dis, opts, nil, nil, pw)
+	_, err = build.Build(ctx, dis, bo, nil, nil, printer)
 	return err
 }
 

@@ -2,14 +2,16 @@ package main
 
 import (
 	"context"
+	"encoding/json"
+	"io"
 	"os"
 
+	"github.com/docker/buildx/bake"
 	"github.com/sirupsen/logrus"
 	cli "github.com/urfave/cli/v2"
 
 	"github.com/robertgzr/asm"
 	"github.com/robertgzr/asm/config"
-	"github.com/robertgzr/asm/util"
 )
 
 var bakeCommand = &cli.Command{
@@ -63,19 +65,23 @@ var bakeCommand = &cli.Command{
 
 		targets := []string{"default"}
 		if cx.Args().Present() {
-			targets = cx.Args().Tail()
+			targets = cx.Args().Slice()
 		}
 
-		c, err := util.ParseFile(fn)
+		c, err := asm.ParseConfig(fn)
 		if err != nil {
 			return err
 		}
 
 		if cx.Bool("print") {
-			return util.PrintConfig(c, cx.App.Writer)
+			return printConfig(c, cx.App.Writer)
 		}
 
 		contextPathHash, _ := os.Getwd()
 		return asm.Assemble(ctx, &cfg, c, targets, cx.String("progress"), contextPathHash)
 	},
+}
+
+func printConfig(c *bake.Config, w io.Writer) error {
+	return json.NewEncoder(w).Encode(c)
 }

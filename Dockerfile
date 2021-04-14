@@ -1,28 +1,19 @@
-# syntax=docker/dockerfile:1.1-experimental
+# syntax=docker/dockerfile:1.2-labs
 # vim: ft=dockerfile
 
-ARG BUILDTAGS='netgo osusergo static_build'
-
-
-# base stage
-FROM --platform=$BUILDPLATFORM docker.io/library/golang:1.14-alpine AS base
-RUN apk add -U --no-cache \
-	ca-certificates
-
+ARG BUILDTAGS='netgo osusergo static_build balena_compat'
 
 FROM --platform=$BUILDPLATFORM tonistiigi/xx:golang AS xgo
+# base stage
+FROM --platform=$BUILDPLATFORM docker.io/library/golang:1.14-alpine AS base
+RUN apk add -U --no-cache ca-certificates
 
 # development (build) stage
 FROM base AS dev
 ARG BUILDPLATFORM
 RUN apk add -U --no-cache file git
-
 # add cross compile helpers
 COPY --from=xgo / /
-
-# install golangci-lint
-RUN wget -q https://github.com/golangci/golangci-lint/releases/download/v1.24.0/golangci-lint-1.24.0-$(echo $BUILDPLATFORM | sed 's/\//-/g').tar.gz -O - | tar -xzf - -C /usr/local/bin/ --strip-components=1 && chmod +x /usr/local/bin/golangci-lint
-
 WORKDIR /src
 ENTRYPOINT [ "sh" ]
 
@@ -37,11 +28,14 @@ RUN --mount=target=. \
 
 FROM dev AS lint
 ARG BUILDTAGS
+ARG TARGETPLATFORM
+# install golangci-lint
+RUN wget -q https://github.com/golangci/golangci-lint/releases/download/v1.24.0/golangci-lint-1.24.0-$(echo $BUILDPLATFORM | sed 's/\//-/g').tar.gz -O - | tar -xzf - -C /usr/local/bin/ --strip-components=1 && chmod +x /usr/local/bin/golangci-lint
 RUN --mount=target=. \
     --mount=target=/go/pkg,type=cache \
     --mount=target=/root/.cache,type=cache \
-      CGO_ENABLED=0 \
-	golangci-lint run --build-tags "${BUILDTAGS}"
+    CGO_ENABLED=0 \
+    golangci-lint run --build-tags "${BUILDTAGS}"
 
 FROM dev AS gobuild
 ARG BUILDTAGS
@@ -50,12 +44,12 @@ RUN --mount=target=. \
     --mount=target=/go/pkg,type=cache \
     --mount=target=/root/.cache,type=cache \
     --mount=target=/tmp/.ldflags,source=/tmp/.ldflags,from=version \
-      go build \
-	-tags "${BUILDTAGS}" \
-	-ldflags "$(cat /tmp/.ldflags)" \
-	-o /out/asm \
-	./cmd/asm \
-      && file /out/asm | grep "statically linked"
+    go build \
+      -tags "${BUILDTAGS}" \
+      -ldflags "$(cat /tmp/.ldflags)" \
+      -o /out/asm \
+      ./cmd/asm \
+    && file /out/asm | grep "statically linked"
 
 # binaries
 FROM scratch AS final
@@ -78,7 +72,13 @@ COPY --from=gobuild /out/* /
 #     --mount=target=/root/.cache,type=cache \
 #       hack/test-integration
 
-# FROM base AS run
-# COPY --from=gobuild /out/* /usr/local/bin/
-# VOLUME /var/run/asm
-# ENTRYPOINT [ "asm" ]
+# container image
+FROM base AS run
+COPY --from=gobuild /out/* /usr/local/bin/
+WORKDIR /run/asm
+
+# generate a default config
+ARG TARGETPLATFORM
+RUN asm gen docker -H unix://var/run/docker.sock --platform ${TARGETPLATFORM} >config.json
+
+ENTRYPOINT [ "/usr/local/bin/asm" ]
