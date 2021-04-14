@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/docker/buildx/bake"
@@ -102,7 +103,6 @@ func parseCompose(fn string, v map[string]interface{}) (*bake.Config, error) {
 			}
 		}
 
-		// FIXME: find a better spot for this
 		balenaCompat(fn, &t)
 
 		if _, ok := sv["image"]; ok {
@@ -110,7 +110,14 @@ func parseCompose(fn string, v map[string]interface{}) (*bake.Config, error) {
 			if !ok {
 				return nil, errors.New("parse error: invalid image field")
 			}
-			t.Tags = append(t.Tags, itag)
+			t.Tags = []string{itag}
+		} else {
+			// FIXME ?
+			absProjDir, err := filepath.Abs(filepath.Dir(fn))
+			if err != nil {
+				return nil, fmt.Errorf("parse error: %s", err)
+			}
+			t.Tags = []string{filepath.Base(absProjDir) + "_" + t.Name}
 		}
 		c.Targets = append(c.Targets, &t)
 		defaultTargets = append(defaultTargets, t.Name)
