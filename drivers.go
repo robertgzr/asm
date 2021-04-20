@@ -5,11 +5,11 @@ import (
 
 	"github.com/docker/buildx/build"
 	"github.com/docker/buildx/driver"
-	"github.com/docker/buildx/store"
 	dockercontext "github.com/docker/cli/cli/context"
 	"github.com/docker/cli/cli/context/docker"
 	dockerclient "github.com/docker/docker/client"
 	"github.com/pkg/errors"
+	"github.com/robertgzr/asm/config"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
 )
@@ -57,32 +57,25 @@ func NewDockerClient(host string, opts map[string]string) (dockerclient.APIClien
 // }
 
 // TODO how can we make this less docker-dependant
-func DriversForNodeGroup(ctx context.Context, ng *store.NodeGroup, contextPathHash string) ([]build.DriverInfo, error) {
+func DriversForNodeGroup(ctx context.Context, ng *config.NodeGroup, contextPathHash string) ([]build.DriverInfo, error) {
 	eg, _ := errgroup.WithContext(ctx)
 
 	dis := make([]build.DriverInfo, len(ng.Nodes))
+	factories := make(map[string]driver.Factory)
 
-	var f driver.Factory
-	if ng.Driver != "" {
-		f = driver.GetFactory(ng.Driver, false)
-		if f == nil {
-			return nil, errors.Errorf("failed to find driver %q", f)
+	for _, n := range ng.Nodes {
+		_, ok := factories[n.Driver]
+		if !ok {
+			f := driver.GetFactory(n.Driver, false)
+			if f == nil {
+				return nil, errors.Errorf("failed to find driver %q", f)
+			}
+			factories[n.Driver] = f
 		}
-	} else {
-		// FIXME do we need driver opts here?
-		dockerapi, err := NewDockerClient(ng.Nodes[0].Endpoint, ng.Nodes[0].DriverOpts)
-		if err != nil {
-			return nil, err
-		}
-		f, err = driver.GetDefaultFactory(ctx, dockerapi, false)
-		if err != nil {
-			return nil, err
-		}
-		ng.Driver = f.Name()
 	}
 
 	for i, n := range ng.Nodes {
-		func(i int, n store.Node) {
+		func(i int, n config.Node) {
 			eg.Go(func() error {
 				di := build.DriverInfo{
 					Name:     n.Name,
@@ -106,7 +99,7 @@ func DriversForNodeGroup(ctx context.Context, ng *store.NodeGroup, contextPathHa
 				// 	return err
 				// }
 
-				d, err := driver.GetDriver(ctx, "asm_buildkit_"+n.Name, f, dockerapi, nil, nil, n.Flags, n.ConfigFile, n.DriverOpts, n.Platforms, contextPathHash)
+				d, err := driver.GetDriver(ctx, "asm_buildkit_"+n.Name, factories[n.Driver], dockerapi, nil, nil, n.Flags, n.ConfigFile, n.DriverOpts, n.Platforms, contextPathHash)
 				if err != nil {
 					logrus.WithField("driver", n.Name).Error(err)
 					di.Err = err

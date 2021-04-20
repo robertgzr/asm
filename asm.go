@@ -6,18 +6,20 @@ import (
 
 	"github.com/docker/buildx/bake"
 	"github.com/docker/buildx/build"
-	"github.com/docker/buildx/store"
 	"github.com/docker/buildx/util/progress"
 	"github.com/sirupsen/logrus"
 
 	_ "github.com/docker/buildx/driver/docker"
 	_ "github.com/docker/buildx/driver/docker-container"
+
 	// _ "github.com/docker/buildx/driver/kubernetes"
 	// _ "github.com/robertgzr/asm/driver/containerd"
+
+	"github.com/robertgzr/asm/config"
 )
 
-func Assemble(ctx context.Context, ng *store.NodeGroup, targets map[string]*bake.Target, progressMode, contextHash string) error {
-	logrus.WithField("node_group", ng.Name).Debug("starting assembly")
+func Assemble(ctx context.Context, ng *config.NodeGroup, targets map[string]*bake.Target, progressMode, contextHash string) error {
+	logrus.Debug("starting assembly")
 
 	bo, err := bake.TargetsToBuildOpt(targets, nil)
 	if err != nil {

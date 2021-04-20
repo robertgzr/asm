@@ -47,19 +47,20 @@ var genDockerCommand = &cli.Command{
 		},
 	},
 	Action: func(cx *cli.Context) error {
-		node := store.Node{
-			Name:     "docker daemon",
-			Endpoint: cx.String("host"),
+		node := config.Node{
+			Driver: "docker",
+			Node: store.Node{
+				Name:     "docker daemon",
+				Endpoint: cx.String("host"),
+			},
 		}
 		specs, err := platformutil.Parse(cx.StringSlice("platform"))
 		if err != nil {
 			return err
 		}
 		node.Platforms = specs
-		cfg := store.NodeGroup{
-			Name:   "default",
-			Driver: "docker",
-			Nodes:  []store.Node{node},
+		cfg := config.NodeGroup{
+			Nodes: []config.Node{node},
 		}
 		return config.Write(cx.App.Writer, cfg, cx.String("format"))
 	},

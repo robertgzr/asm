@@ -12,9 +12,16 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-type Config = store.NodeGroup
+type NodeGroup struct {
+	Nodes []Node
+}
 
-func Load(fn string) (cfg Config, err error) {
+type Node struct {
+	store.Node
+	Driver string
+}
+
+func Load(fn string) (cfg NodeGroup, err error) {
 	if fn != "" {
 		goto exit
 	}
@@ -38,7 +45,7 @@ exit:
 	return Parse(fn)
 }
 
-func Parse(fn string) (cfg Config, err error) {
+func Parse(fn string) (cfg NodeGroup, err error) {
 	var f io.Reader
 	f, err = os.Open(fn)
 	if err != nil {
@@ -60,7 +67,7 @@ func Parse(fn string) (cfg Config, err error) {
 	return
 }
 
-func Write(w io.Writer, cfg Config, format string) (err error) {
+func Write(w io.Writer, cfg NodeGroup, format string) (err error) {
 	switch format {
 	case "yaml", "yml":
 		var b []byte
