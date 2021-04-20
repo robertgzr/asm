@@ -70,6 +70,7 @@ func balenaCompat(fn string, t *bake.Target) {
 	t.DockerfileInline = &dfInline
 	empty := ""
 	t.Dockerfile = &empty
+	t.Context = &context
 }
 
 var arm7machines = []string{
