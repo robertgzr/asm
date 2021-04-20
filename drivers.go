@@ -9,6 +9,7 @@ import (
 	"github.com/docker/cli/cli/context/docker"
 	dockerclient "github.com/docker/docker/client"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -86,6 +87,7 @@ func DriversForNodeGroup(ctx context.Context, ng *store.NodeGroup, contextPathHa
 				d, err := driver.GetDriver(ctx, "asm_buildkit_"+n.Name, f, dockerapi, nil, nil, n.Flags, n.ConfigFile, n.DriverOpts, n.Platforms, contextPathHash)
 				if err != nil {
 					di.Err = err
+					logrus.WithField("driver", n.Name).Error(di.Err)
 					return nil
 				}
 				di.Driver = d
