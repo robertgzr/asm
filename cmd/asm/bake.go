@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/docker/buildx/bake"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	cli "github.com/urfave/cli/v2"
 
@@ -24,7 +25,6 @@ var bakeCommand = &cli.Command{
 			Name:    "config",
 			Aliases: []string{"c"},
 			Usage:   "config file with worker infos",
-			Value:   "config.json",
 		},
 		&cli.StringSliceFlag{
 			Name:     "file",
@@ -49,7 +49,7 @@ var bakeCommand = &cli.Command{
 	Action: func(cx *cli.Context) error {
 		cfg, err := config.Load(cx.String("config"))
 		if err != nil {
-			return err
+			return errors.Wrap(err, "loading config")
 		}
 
 		if cx.Bool("debug") {

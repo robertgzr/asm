@@ -1,12 +1,13 @@
 package main
 
 import (
-	"encoding/json"
-
 	"github.com/containerd/containerd/platforms"
 	"github.com/docker/buildx/store"
 	"github.com/docker/buildx/util/platformutil"
+	dockerclient "github.com/docker/docker/client"
 	cli "github.com/urfave/cli/v2"
+
+	"github.com/robertgzr/asm/config"
 )
 
 var genCommand = &cli.Command{
@@ -14,6 +15,13 @@ var genCommand = &cli.Command{
 	Aliases: []string{"gen"},
 	Usage:   "generate files",
 	// Description: "",
+	Flags: []cli.Flag{
+		&cli.StringFlag{
+			Name:    "format",
+			Aliases: []string{"f"},
+			Value:   "yaml",
+		},
+	},
 	Action: func(cx *cli.Context) error {
 		return cli.ShowCommandHelp(cx, cx.Command.Name)
 	},
@@ -27,10 +35,10 @@ var genDockerCommand = &cli.Command{
 	Usage: "generate docker node group configs",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
-			Name:     "host",
-			Aliases:  []string{"H"},
-			Usage:    "docker daemon address",
-			Required: true,
+			Name:    "host",
+			Aliases: []string{"H"},
+			Usage:   "docker daemon address",
+			Value:   dockerclient.DefaultDockerHost,
 		},
 		&cli.StringSliceFlag{
 			Name:  "platform",
@@ -48,11 +56,11 @@ var genDockerCommand = &cli.Command{
 			return err
 		}
 		node.Platforms = specs
-		config := store.NodeGroup{
+		cfg := store.NodeGroup{
 			Name:   "default",
 			Driver: "docker",
 			Nodes:  []store.Node{node},
 		}
-		return json.NewEncoder(cx.App.Writer).Encode(config)
+		return config.Write(cx.App.Writer, cfg, cx.String("format"))
 	},
 }
