@@ -31,7 +31,7 @@ func ReadTargets(ctx context.Context, files []bake.File, targets, overrides []st
 			}
 			if verI, ok := v["version"]; ok {
 				if ver, ok := verI.(string); ok && strings.HasPrefix(ver, "2") {
-					logrus.Warnf("parse: compose version: %q, falling back to legacy parsing", ver)
+					logrus.Infof("compose version: %q, falling back to legacy parsing", ver)
 					c, err := parseCompose(f.Name, v)
 					if err != nil {
 						return nil, err
@@ -54,6 +54,10 @@ func ReadTargets(ctx context.Context, files []bake.File, targets, overrides []st
 				}
 			}
 		}
+	}
+
+	if err := balenaCompat(m); err != nil {
+		return nil, err
 	}
 
 	return m, nil
@@ -83,7 +87,8 @@ func parseCompose(fn string, v map[string]interface{}) (*bake.Config, error) {
 			continue
 		}
 		if buildDir, ok := sv["build"].(string); ok {
-			t.Context = &buildDir
+			context := filepath.Join(filepath.Dir(fn), buildDir)
+			t.Context = &context
 			df := "Dockerfile"
 			t.Dockerfile = &df
 		} else {
@@ -93,7 +98,8 @@ func parseCompose(fn string, v map[string]interface{}) (*bake.Config, error) {
 				return nil, errors.New("parse error: invalid build field")
 			}
 			if v, ok := b["context"].(string); ok {
-				t.Context = &v
+				context := filepath.Join(filepath.Dir(fn), v)
+				t.Context = &context
 			}
 			if v, ok := b["dockerfile"].(string); ok {
 				t.Dockerfile = &v
@@ -102,8 +108,6 @@ func parseCompose(fn string, v map[string]interface{}) (*bake.Config, error) {
 				t.Args = v
 			}
 		}
-
-		balenaCompat(fn, &t)
 
 		if _, ok := sv["image"]; ok {
 			itag, ok := sv["image"].(string)

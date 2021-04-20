@@ -8,6 +8,7 @@ require (
 	github.com/docker/cli v20.10.5+incompatible
 	github.com/docker/docker v20.10.5+incompatible
 	github.com/moby/buildkit v0.8.1-0.20201205083753-0af7b1b9c693
+	github.com/opencontainers/image-spec v1.0.1
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.7.0
 	github.com/urfave/cli/v2 v2.3.0
