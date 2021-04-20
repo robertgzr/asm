@@ -6,6 +6,7 @@ import (
 	"github.com/docker/buildx/build"
 	"github.com/docker/buildx/driver"
 	"github.com/docker/buildx/store"
+	dockercontext "github.com/docker/cli/cli/context"
 	"github.com/docker/cli/cli/context/docker"
 	dockerclient "github.com/docker/docker/client"
 	"github.com/pkg/errors"
@@ -13,16 +14,36 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-func NewDockerClient(host string) (dockerclient.APIClient, error) {
+func NewDockerClient(host string, opts map[string]string) (dockerclient.APIClient, error) {
 	ep := docker.Endpoint{
 		EndpointMeta: docker.EndpointMeta{
 			Host: host,
 		},
 	}
+
+	if opts != nil {
+		caPath, haveCA := opts["ca"]
+		certPath, haveCert := opts["cert"]
+		keyPath, haveKey := opts["key"]
+		if haveCA && haveCert && haveKey {
+			var err error
+			ep.TLSData, err = dockercontext.TLSDataFromFiles(caPath, certPath, keyPath)
+			if err != nil {
+				return nil, err
+			}
+			ep.EndpointMeta.SkipTLSVerify = false
+			// FIXME remove those to not confuse the docker-container driver
+			delete(opts, "ca")
+			delete(opts, "cert")
+			delete(opts, "key")
+		}
+	}
+
 	clientOpts, err := ep.ClientOpts()
 	if err != nil {
 		return nil, err
 	}
+	logrus.WithField("tls_verify", !ep.EndpointMeta.SkipTLSVerify).Debugf("driver: connecting to %s", host)
 	return dockerclient.NewClientWithOpts(clientOpts...)
 }
 
@@ -35,7 +56,7 @@ func NewDockerClient(host string) (dockerclient.APIClient, error) {
 // 	return kubernetes.ConfigFromContext(context, dockerCli.ContextStore())
 // }
 
-// TODO can we support custom drivers here?
+// TODO how can we make this less docker-dependant
 func DriversForNodeGroup(ctx context.Context, ng *store.NodeGroup, contextPathHash string) ([]build.DriverInfo, error) {
 	eg, _ := errgroup.WithContext(ctx)
 
@@ -48,7 +69,8 @@ func DriversForNodeGroup(ctx context.Context, ng *store.NodeGroup, contextPathHa
 			return nil, errors.Errorf("failed to find driver %q", f)
 		}
 	} else {
-		dockerapi, err := NewDockerClient(ng.Nodes[0].Endpoint)
+		// FIXME do we need driver opts here?
+		dockerapi, err := NewDockerClient(ng.Nodes[0].Endpoint, ng.Nodes[0].DriverOpts)
 		if err != nil {
 			return nil, err
 		}
@@ -70,12 +92,12 @@ func DriversForNodeGroup(ctx context.Context, ng *store.NodeGroup, contextPathHa
 					dis[i] = di
 				}()
 
-				dockerapi, err := NewDockerClient(n.Endpoint)
+				dockerapi, err := NewDockerClient(n.Endpoint, n.DriverOpts)
 				if err != nil {
 					di.Err = err
 					return nil
 				}
-				// TODO: replace the following line with dockerclient.WithAPIVersionNegotiation option in clientForEndpoint
+				// TODO: replace with dockerclient.WithAPIVersionNegotiation option in clientForEndpoint
 				dockerapi.NegotiateAPIVersion(ctx)
 
 				// var kcc driver.KubeClientConfig
@@ -86,8 +108,8 @@ func DriversForNodeGroup(ctx context.Context, ng *store.NodeGroup, contextPathHa
 
 				d, err := driver.GetDriver(ctx, "asm_buildkit_"+n.Name, f, dockerapi, nil, nil, n.Flags, n.ConfigFile, n.DriverOpts, n.Platforms, contextPathHash)
 				if err != nil {
+					logrus.WithField("driver", n.Name).Error(err)
 					di.Err = err
-					logrus.WithField("driver", n.Name).Error(di.Err)
 					return nil
 				}
 				di.Driver = d
