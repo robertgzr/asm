@@ -52,7 +52,7 @@ RUN --mount=target=. \
     && file /out/asm | grep "statically linked"
 
 # binaries
-FROM scratch AS final
+FROM scratch AS binary
 COPY --from=gobuild /out/* /
 
 # unit tests
@@ -73,7 +73,7 @@ COPY --from=gobuild /out/* /
 #       hack/test-integration
 
 # container image
-FROM base AS run
+FROM base AS image
 COPY --from=gobuild /out/* /usr/local/bin/
 WORKDIR /run/asm
 

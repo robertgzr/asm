@@ -3,21 +3,20 @@ variable "TAG" {
 }
 
 group "default" {
-	targets = ["lint", "build"]
+	targets = ["lint", "binary"]
 }
 
 target "lint" {
 	target = "lint"
-	output = [ "type=tar,dest=/dev/null" ]
 }
 
-target "build" {
-	target = "final"
+target "binary" {
+	target = "binary"
 	output = [ "." ]
 }
 
 target "image" {
-	target = "run"
+	target = "image"
 	output = [
 		"type=image,name=docker.io/robertgzr/asm:${TAG},push=false",
 	]
