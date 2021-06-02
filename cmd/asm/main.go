@@ -39,6 +39,14 @@ func main() {
 		// ctlCommand,
 	}
 
+	app.Before = func(cx *cli.Context) error {
+		if cx.Bool("debug") {
+			logrus.SetLevel(logrus.DebugLevel)
+			logrus.Debug("debug output enabled")
+		}
+		return nil
+	}
+
 	app.Action = func(cx *cli.Context) error {
 		return cli.ShowAppHelp(cx)
 	}

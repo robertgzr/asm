@@ -8,7 +8,6 @@ import (
 
 	"github.com/docker/buildx/bake"
 	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
 	cli "github.com/urfave/cli/v2"
 
 	"github.com/robertgzr/asm"
@@ -51,11 +50,6 @@ var bakeCommand = &cli.Command{
 		cfg, err := config.Load(cx.String("config"))
 		if err != nil {
 			return errors.Wrap(err, "loading config")
-		}
-
-		if cx.Bool("debug") {
-			logrus.SetLevel(logrus.DebugLevel)
-			logrus.Debug("debug output enabled")
 		}
 
 		ctx, cancel := context.WithCancel(context.Background())
