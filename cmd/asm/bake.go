@@ -24,6 +24,7 @@ var bakeCommand = &cli.Command{
 		&cli.StringFlag{
 			Name:    "config",
 			Aliases: []string{"c"},
+			Value:   "",
 			Usage:   "config file with worker infos",
 		},
 		&cli.StringSliceFlag{

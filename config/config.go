@@ -21,23 +21,40 @@ type Node struct {
 	Driver string
 }
 
+func load(dir string) string {
+	var fp string
+	fp = filepath.Join(dir, "asm.yml")
+	if _, err := os.Stat(fp); err == nil {
+		return fp
+	}
+	fp = filepath.Join(dir, "asm.yaml")
+	if _, err := os.Stat(fp); err == nil {
+		return fp
+	}
+	fp = filepath.Join(dir, "asm.json")
+	if _, err := os.Stat(fp); err == nil {
+		return fp
+	}
+	return ""
+}
+
 func Load(fn string) (cfg NodeGroup, err error) {
 	if fn != "" {
 		goto exit
 	}
 
-	if fi, err := os.Stat("asm.yml"); err == nil {
-		fn = fi.Name()
+	// try local dir
+	if fn = load("."); fn != "" {
 		goto exit
 	}
-	if fi, err := os.Stat("asm.yaml"); err == nil {
-		fn = fi.Name()
-		goto exit
+
+	// try xdg
+	if xdg, ok := os.LookupEnv("XDG_CONFIG_HOME"); ok {
+		if fn = load(filepath.Join(xdg, "asm")); fn != "" {
+			goto exit
+		}
 	}
-	if fi, err := os.Stat("asm.json"); err == nil {
-		fn = fi.Name()
-		goto exit
-	}
+
 	err = errors.New("no config file found")
 	return
 
