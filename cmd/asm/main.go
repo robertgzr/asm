@@ -37,6 +37,7 @@ func main() {
 		genCommand,
 		// serveCommand,
 		// ctlCommand,
+		nodesCommand,
 	}
 
 	app.Before = func(cx *cli.Context) error {
