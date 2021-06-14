@@ -11,3 +11,7 @@ lint:
 
 debug:
 	@CGO_ENABLED=0 go build -tags balena_compat ./cmd/asm
+
+install: PREFIX ?= /usr/local
+install:
+	install -t $(PREFIX)/bin/ asm
