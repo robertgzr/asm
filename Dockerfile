@@ -2,10 +2,11 @@
 # vim: ft=dockerfile
 
 ARG BUILDTAGS='netgo osusergo static_build balena_compat'
+ARG GO_VERSION=1.16
 
 FROM --platform=$BUILDPLATFORM tonistiigi/xx:golang AS xgo
 # base stage
-FROM --platform=$BUILDPLATFORM docker.io/library/golang:1.14-alpine AS base
+FROM --platform=$BUILDPLATFORM docker.io/library/golang:$GO_VERSION-alpine AS base
 RUN apk add -U --no-cache ca-certificates
 
 # development (build) stage
