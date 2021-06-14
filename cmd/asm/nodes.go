@@ -1,33 +1,21 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"strings"
 	"text/tabwriter"
 
 	"github.com/containerd/containerd/platforms"
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
-	"github.com/pkg/errors"
 	cli "github.com/urfave/cli/v2"
 
 	"github.com/robertgzr/asm/config"
 )
 
-const keyConfig = "io.robertgzr.asm.config"
-
 var nodesCommand = &cli.Command{
 	Name:    "nodes",
 	Aliases: []string{},
 	Usage:   "interact with build nodes",
-	Before: func(cx *cli.Context) error {
-		cfg, err := config.Load(cx.String("config"))
-		if err != nil {
-			return errors.Wrap(err, "loading config")
-		}
-		cx.Context = context.WithValue(cx.Context, keyConfig, cfg)
-		return nil
-	},
 	Action: func(cx *cli.Context) error {
 		return listNodes(cx)
 	},
@@ -49,15 +37,15 @@ var listNodesCommand = &cli.Command{
 }
 
 func formatPlatformArray(array []v1.Platform) string {
-    var ps []string
-    for _, p := range array {
-      ps = append(ps, platforms.Format(p))
-    }
-    return strings.Join(ps, ",")
+	var ps []string
+	for _, p := range array {
+		ps = append(ps, platforms.Format(p))
+	}
+	return strings.Join(ps, ",")
 }
 
 func listNodes(cx *cli.Context) error {
-	cfg := cx.Context.Value(keyConfig).(config.NodeGroup)
+	cfg := cx.Context.Value(ctxKeyConfig{}).(config.NodeGroup)
 
 	tw := tabwriter.NewWriter(cx.App.Writer, 0, 4, 4, ' ', tabwriter.TabIndent)
 

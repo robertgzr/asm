@@ -2,9 +2,11 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	cli "github.com/urfave/cli/v2"
 
@@ -13,8 +15,11 @@ import (
 
 	// _ "github.com/docker/buildx/driver/kubernetes"
 
+	"github.com/robertgzr/asm/config"
 	"github.com/robertgzr/asm/version"
 )
+
+type ctxKeyConfig struct{}
 
 func main() {
 	cli.VersionPrinter = func(cx *cli.Context) {
@@ -29,6 +34,12 @@ func main() {
 		&cli.BoolFlag{
 			Name:  "debug",
 			Usage: "be more verbose",
+		},
+		&cli.StringFlag{
+			Name:    "config",
+			Aliases: []string{"c"},
+			Value:   "",
+			Usage:   "config file with worker infos",
 		},
 	}
 
@@ -45,6 +56,13 @@ func main() {
 			logrus.SetLevel(logrus.DebugLevel)
 			logrus.Debug("debug output enabled")
 		}
+
+		cfg, err := config.Load(cx.String("config"))
+		if err != nil {
+			return errors.Wrap(err, "loading config")
+		}
+		cx.Context = context.WithValue(cx.Context, ctxKeyConfig{}, cfg)
+
 		return nil
 	}
 

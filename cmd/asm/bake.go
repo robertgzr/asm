@@ -7,7 +7,6 @@ import (
 	"os"
 
 	"github.com/docker/buildx/bake"
-	"github.com/pkg/errors"
 	cli "github.com/urfave/cli/v2"
 
 	"github.com/robertgzr/asm"
@@ -20,12 +19,6 @@ var bakeCommand = &cli.Command{
 	Usage:       "bake [TARGET...]",
 	Description: "build from a file",
 	Flags: []cli.Flag{
-		&cli.StringFlag{
-			Name:    "config",
-			Aliases: []string{"c"},
-			Value:   "",
-			Usage:   "config file with worker infos",
-		},
 		&cli.StringSliceFlag{
 			Name:     "file",
 			Aliases:  []string{"f"},
@@ -47,10 +40,7 @@ var bakeCommand = &cli.Command{
 		},
 	},
 	Action: func(cx *cli.Context) error {
-		cfg, err := config.Load(cx.String("config"))
-		if err != nil {
-			return errors.Wrap(err, "loading config")
-		}
+		cfg := cx.Context.Value(ctxKeyConfig{}).(config.NodeGroup)
 
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
@@ -60,8 +50,7 @@ var bakeCommand = &cli.Command{
 			targets = cx.Args().Slice()
 		}
 
-		var files []bake.File
-		files, err = bake.ReadLocalFiles(cx.StringSlice("file"))
+		files, err := bake.ReadLocalFiles(cx.StringSlice("file"))
 		if err != nil {
 			return err
 		}
