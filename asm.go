@@ -19,19 +19,25 @@ import (
 )
 
 func Assemble(ctx context.Context, ng *config.NodeGroup, targets map[string]*bake.Target, progressMode, contextHash string) error {
-	logrus.Debug("starting assembly")
+	logrus.WithFields(logrus.Fields{
+		"progress": progressMode,
+		"context":  contextHash,
+		"nodes":    len(ng.Nodes),
+	}).Debug("starting assembly")
+
+	logrus.Debugf("provided node group: %#+v", ng.Nodes)
 
 	bo, err := bake.TargetsToBuildOpt(targets, nil)
 	if err != nil {
 		return err
 	}
-	logrus.WithField("opts", len(bo)).Debugf("resolved opts: %#+v", bo)
+	logrus.Debugf("resolved opts: %#+v", bo)
 
 	dis, err := DriversForNodeGroup(ctx, ng, contextHash)
 	if err != nil {
 		return err
 	}
-	logrus.WithField("drivers", len(dis)).Debugf("resolved drivers: %#+v", dis)
+	logrus.Debugf("resolved drivers: %#+v", dis)
 
 	ctx2, cancel := context.WithCancel(context.TODO())
 	defer cancel()
