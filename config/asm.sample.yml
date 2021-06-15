@@ -1,0 +1,10 @@
+Nodes:
+- ConfigFile: ""
+  Driver: docker
+  DriverOpts: null
+  Endpoint: unix:///var/run/docker.sock
+  Flags: null
+  Name: docker daemon
+  Platforms:
+  - architecture: amd64
+    os: linux
