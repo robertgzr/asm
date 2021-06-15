@@ -38,6 +38,10 @@ var bakeCommand = &cli.Command{
 			Value: "auto",
 			Usage: "set type of progress output (auto, plain, tty)",
 		},
+		&cli.StringSliceFlag{
+			Name:  "nodes",
+			Usage: "overwrite the build nodes",
+		},
 	},
 	Action: func(cx *cli.Context) error {
 		cfg := cx.Context.Value(ctxKeyConfig{}).(config.NodeGroup)
@@ -67,6 +71,18 @@ var bakeCommand = &cli.Command{
 			}
 			fmt.Fprintln(cx.App.Writer, string(dt))
 			return nil
+		}
+
+		if len(cx.StringSlice("nodes")) != 0 {
+			var new config.NodeGroup
+			for _, n := range cfg.Nodes {
+				for _, name := range cx.StringSlice("nodes") {
+					if n.Name == name {
+						new.Nodes = append(new.Nodes, n)
+					}
+				}
+			}
+			cfg = new
 		}
 
 		contextPathHash, _ := os.Getwd()

@@ -9,9 +9,10 @@ import (
 	"github.com/docker/cli/cli/context/docker"
 	dockerclient "github.com/docker/docker/client"
 	"github.com/pkg/errors"
-	"github.com/robertgzr/asm/config"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sync/errgroup"
+
+	"github.com/robertgzr/asm/config"
 )
 
 func NewDockerClient(host string, opts map[string]string) (dockerclient.APIClient, error) {
