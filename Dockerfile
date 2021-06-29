@@ -1,5 +1,4 @@
-# syntax=docker/dockerfile:1.2-labs
-# vim: ft=dockerfile
+# syntax=docker/dockerfile:1.2
 
 ARG BUILDTAGS='netgo osusergo static_build balena_compat'
 ARG GO_VERSION=1.16
@@ -20,12 +19,13 @@ ENTRYPOINT [ "sh" ]
 
 FROM dev AS version
 RUN --mount=target=. \
+    set -ex; \
     PKG=github.com/robertgzr/asm; \
     VERSION=$(git describe --match 'v[0-9]*' --dirty='+dirty' --always --tags); \
     REVISION=$(git rev-parse HEAD)$(if ! git diff --no-ext-diff --quiet --exit-code; then echo '+dirty'; fi); \
     echo "-X ${PKG}/version.Version=${VERSION} -X ${PKG}/version.Revision=${REVISION} -X ${PKG}/version.Package=${PKG}" | \
       tee /tmp/.ldflags; \
-    echo "${VERSION}" | tee /tmp/.version
+    echo "${VERSION}" | tee /tmp/.version;
 
 FROM dev AS lint
 ARG BUILDTAGS
@@ -45,12 +45,12 @@ RUN --mount=target=. \
     --mount=target=/go/pkg,type=cache \
     --mount=target=/root/.cache,type=cache \
     --mount=target=/tmp/.ldflags,source=/tmp/.ldflags,from=version \
+    set -ex; \
     go build \
       -tags "${BUILDTAGS}" \
       -ldflags "$(cat /tmp/.ldflags)" \
-      -o /out/asm \
-      ./cmd/asm \
-    && file /out/asm | grep "statically linked"
+      -o /out/asm ./cmd/asm; \
+    file /out/asm | grep "statically linked"
 
 # binaries
 FROM scratch AS binary
@@ -83,3 +83,5 @@ ARG TARGETPLATFORM
 RUN asm gen docker -H unix://var/run/docker.sock --platform ${TARGETPLATFORM} >config.json
 
 ENTRYPOINT [ "/usr/local/bin/asm" ]
+
+# vim: ft=dockerfile
