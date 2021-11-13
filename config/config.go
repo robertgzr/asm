@@ -47,9 +47,11 @@ func Load(fn string) (cfg NodeGroup, err error) {
 		goto exit
 	}
 
-	// try xdg
-	if xdg, ok := os.LookupEnv("XDG_CONFIG_HOME"); ok {
-		if fn = load(filepath.Join(xdg, "asm")); fn != "" {
+	// try user config
+	if dir, err := os.UserConfigDir(); err != nil {
+		return cfg, err
+	} else {
+		if fn = load(filepath.Join(dir, "asm")); fn != "" {
 			goto exit
 		}
 	}
