@@ -1,0 +1,26 @@
+version: '3.4'
+
+services:
+  asm1:
+    image: asm1
+    build: .
+
+  asm2:
+    image: asm2
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        BUILDARGS: static_build
+
+  asm3:
+    image: asm3
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: stage1
+
+  other:
+    image: other
+    build:
+      context: ./other

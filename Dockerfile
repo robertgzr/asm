@@ -36,7 +36,7 @@ RUN --mount=target=. \
     --mount=target=/go/pkg,type=cache \
     --mount=target=/root/.cache,type=cache \
     CGO_ENABLED=0 \
-    golangci-lint run --build-tags "${BUILDTAGS}"
+    golangci-lint run --build-tags "${BUILDTAGS}" ./... || true
 
 FROM dev AS gobuild
 ARG BUILDTAGS
