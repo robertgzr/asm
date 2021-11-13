@@ -31,6 +31,9 @@ func Assemble(ctx context.Context, ng *config.NodeGroup, targets map[string]*bak
 	if err != nil {
 		return err
 	}
+	if err := resolveBalena(bo, targets); err != nil {
+		return err
+	}
 	logrus.Debugf("resolved opts: %#+v", bo)
 
 	dis, err := DriversForNodeGroup(ctx, ng, contextHash)

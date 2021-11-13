@@ -3,6 +3,6 @@ FROM balenalib/${BALENA_MACHINE_NAME}-alpine:run
 
 ARG BALENA_ARCH
 ARG BALENA_SERVICE_NAME
-RUN test -n "${BALENA_ARCH}" && test -n "${BALENA_ARCH}"
+RUN test -n "${BALENA_ARCH}" && test -n "${BALENA_SERVICE_NAME}"
 
 EXPOSE 8080

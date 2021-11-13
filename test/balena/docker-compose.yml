@@ -1,7 +1,11 @@
 version: '2.2'
 
 services:
-  main:
+  test1:
     build:
       context: .
       dockerfile: Dockerfile
+
+  test2:
+    build:
+      context: .

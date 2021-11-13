@@ -40,14 +40,24 @@ func ReadTargets(ctx context.Context, files []bake.File, targets, overrides []st
 					if err != nil {
 						return nil, err
 					}
-					for _, n := range targets {
-						for _, n := range c.ResolveGroup(n) {
-							t, err := c.ResolveTarget(n, o)
+					for _, groupName := range targets {
+						for _, targetName := range c.ResolveGroup(groupName) {
+							t, err := c.ResolveTarget(targetName, o)
 							if err != nil {
 								return nil, err
 							}
+
+							// NOTE: otherwise we can't tell if the field was undefined
+							for _, parsedTarget := range c.Targets {
+								if parsedTarget.Name == targetName {
+									if parsedTarget.Dockerfile == nil {
+										t.Dockerfile = nil
+									}
+								}
+							}
+
 							if t != nil {
-								m[n] = t
+								m[targetName] = t
 							}
 						}
 					}
@@ -56,7 +66,7 @@ func ReadTargets(ctx context.Context, files []bake.File, targets, overrides []st
 		}
 	}
 
-	if err := balenaCompat(m); err != nil {
+	if err := parseBalena(m); err != nil {
 		return nil, err
 	}
 
@@ -89,10 +99,7 @@ func parseCompose(fn string, v map[string]interface{}) (*bake.Config, error) {
 		if buildDir, ok := sv["build"].(string); ok {
 			context := filepath.Join(filepath.Dir(fn), buildDir)
 			t.Context = &context
-			df := "Dockerfile"
-			t.Dockerfile = &df
 		} else {
-			logrus.Warnf("%#+v", sv["build"])
 			b, ok := sv["build"].(map[string]interface{})
 			if !ok {
 				return nil, errors.New("parse error: invalid build field")
