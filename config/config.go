@@ -3,13 +3,12 @@ package config
 import (
 	"encoding/json"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
 	"github.com/docker/buildx/store"
+	"github.com/goccy/go-yaml"
 	"github.com/pkg/errors"
-	"sigs.k8s.io/yaml"
 )
 
 type NodeGroup struct {
@@ -70,12 +69,7 @@ func Parse(fn string) (cfg NodeGroup, err error) {
 	}
 	switch filepath.Ext(fn) {
 	case ".yaml", ".yml":
-		var b []byte
-		b, err = ioutil.ReadAll(f)
-		if err != nil {
-			return
-		}
-		err = yaml.Unmarshal(b, &cfg)
+		err = yaml.NewDecoder(f).Decode(&cfg)
 	case ".json":
 		err = json.NewDecoder(f).Decode(&cfg)
 	default:

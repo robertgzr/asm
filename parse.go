@@ -8,8 +8,8 @@ import (
 	"strings"
 
 	"github.com/docker/buildx/bake"
+	"github.com/goccy/go-yaml"
 	"github.com/sirupsen/logrus"
-	"sigs.k8s.io/yaml"
 )
 
 type targetMap map[string]*bake.Target
