@@ -121,6 +121,19 @@ func processDockerfileTemplate(t *bake.Target) error {
 	dfInline := string(b)
 	dfInline = strings.ReplaceAll(dfInline, "%%BALENA_MACHINE_NAME%%", machine)
 	dfInline = strings.ReplaceAll(dfInline, "%%BALENA_ARCH%%", arch)
+	dfInline = strings.ReplaceAll(dfInline, "%%BALENA_SERVICE_NAME%%", t.Name)
+
+	if v, ok := os.LookupEnv("ASM_BALENA_APP_NAME"); ok {
+		dfInline = strings.ReplaceAll(dfInline, "%%BALENA_APP_NAME%%", v)
+	} else {
+		lg.Warn("BALENA_APP_NAME undefined")
+	}
+	if v, ok := os.LookupEnv("ASM_BALENA_RELEASE_HASH"); ok {
+		dfInline = strings.ReplaceAll(dfInline, "%%BALENA_RELEASE_HASH%%", v)
+	} else {
+		lg.Warn("BALENA_RELEASE_HASH undefined")
+	}
+
 	t.DockerfileInline = &dfInline
 	empty := ""
 	t.Dockerfile = &empty
