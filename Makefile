@@ -1,14 +1,15 @@
-BUILDX ?= docker buildx
 BINARY ?= asm
 
+buildx = $(if $(shell test -x ${BINARY} && echo 1),${BINARY},docker buildx)
+
 binary:
-	$(BUILDX) bake -f build.hcl
+	$(call buildx) bake -f build.hcl
 
 image:
-	$(BUILDX) bake -f build.hcl image
+	$(call buildx) bake -f build.hcl image
 
 lint:
-	$(BUILDX) bake -f build.hcl lint
+	$(call buildx) bake -f build.hcl lint
 
 # ---
 
