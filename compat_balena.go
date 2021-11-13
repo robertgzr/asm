@@ -5,6 +5,7 @@ package asm
 
 import (
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -14,6 +15,7 @@ import (
 	"github.com/containerd/containerd/platforms"
 	"github.com/docker/buildx/bake"
 	"github.com/docker/buildx/build"
+	"github.com/goccy/go-yaml"
 	"github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/sirupsen/logrus"
 )
@@ -139,7 +141,89 @@ func processDockerfileTemplate(t *bake.Target) error {
 	return nil
 }
 
-func parseBalena(m map[string]*bake.Target) error {
+type BalenaYML struct {
+	BuildSecrets struct {
+		Global []struct {
+			Source      string `yaml:"source"`
+			Destination string `yaml:"dest"`
+		} `yaml:"global"`
+		Services map[string][]struct {
+			Source      string `yaml:"source"`
+			Destination string `yaml:"dest"`
+		} `yaml:"services"`
+	} `yaml:"build-secrets"`
+
+	BuildVariables struct {
+		Global   []string            `yaml:"global"`
+		Services map[string][]string `yaml:"services"`
+	} `yaml:"build-variables"`
+}
+
+func processBalenaYML(m map[string]*bake.Target, composeFilePath string) error {
+	composeFileAbs, err := filepath.Abs(composeFilePath)
+	if err != nil {
+		return fmt.Errorf("detecting project root at %s: %w", composeFilePath, err)
+	}
+	balenaYMLPath := filepath.Join(filepath.Dir(composeFileAbs), ".balena/balena.yml")
+	f, err := os.Open(balenaYMLPath)
+	if errors.Is(err, os.ErrNotExist) {
+		logrus.
+			WithField("balena", "balena.yml").
+			Debug("no balena.yml found")
+		return nil
+	}
+
+	balenaDir := filepath.Dir(balenaYMLPath)
+
+	var balenaYML BalenaYML
+	if err := yaml.NewDecoder(f).Decode(&balenaYML); err != nil {
+		return err
+	}
+	// balena.yml > build-secrets
+	mkSecret := func(src, dst string) string {
+		return fmt.Sprintf("id=%s,src=%s", dst, filepath.Join(balenaDir, "secrets", src))
+	}
+	for _, s := range balenaYML.BuildSecrets.Global {
+		for _, t := range m {
+			t.Secrets = append(t.Secrets, mkSecret(s.Source, s.Destination))
+		}
+	}
+	for name, secrets := range balenaYML.BuildSecrets.Services {
+		t := m[name]
+		for _, s := range secrets {
+			t.Secrets = append(t.Secrets, mkSecret(s.Source, s.Destination))
+		}
+		m[name] = t
+	}
+
+	// balena.yml > build-variables
+	mkArg := func(args map[string]string, arg string) {
+		parts := strings.SplitN(arg, "=", 2)
+		args[parts[0]] = parts[1]
+	}
+	for _, a := range balenaYML.BuildVariables.Global {
+		for _, t := range m {
+			if t.Args == nil {
+				t.Args = make(map[string]string, len(balenaYML.BuildVariables.Global))
+			}
+			mkArg(t.Args, a)
+		}
+	}
+	for name, args := range balenaYML.BuildVariables.Services {
+		t := m[name]
+		if t.Args == nil {
+			t.Args = make(map[string]string, len(args))
+		}
+		for _, a := range args {
+			mkArg(t.Args, a)
+		}
+		m[name] = t
+	}
+
+	return nil
+}
+
+func parseBalena(m map[string]*bake.Target, files []bake.File) error {
 	for name, t := range m {
 		if t.Name == "" {
 			t.Name = name
@@ -147,12 +231,15 @@ func parseBalena(m map[string]*bake.Target) error {
 
 		if t.Dockerfile == nil || *t.Dockerfile == "Dockerfile.template" {
 			if err := processDockerfileTemplate(t); err != nil {
-				return err
+				return fmt.Errorf("processing dockerfile template: %w", err)
 			}
 		}
-
-		// TODO secrets
 	}
+
+	if err := processBalenaYML(m, files[0].Name); err != nil {
+		return fmt.Errorf("processing balena.yml: %w", err)
+	}
+
 	return nil
 }
 

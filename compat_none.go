@@ -8,7 +8,7 @@ import (
 	"github.com/docker/buildx/build"
 )
 
-func parseBalena(m targetMap) error {
+func parseBalena(m targetMap, files []bake.File) error {
 	return nil
 }
 

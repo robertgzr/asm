@@ -66,8 +66,8 @@ func ReadTargets(ctx context.Context, files []bake.File, targets, overrides []st
 		}
 	}
 
-	if err := parseBalena(m); err != nil {
-		return nil, err
+	if err := parseBalena(m, files); err != nil {
+		return nil, fmt.Errorf("balena compatability layer failed: %w", err)
 	}
 
 	return m, nil

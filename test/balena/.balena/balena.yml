@@ -1,0 +1,8 @@
+build-secrets:
+  global:
+  - source: abc-secret.txt
+    dest: my-secret.txt
+
+build-variables:
+  global:
+  - "TEST=TEST"
