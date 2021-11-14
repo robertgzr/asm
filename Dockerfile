@@ -30,13 +30,14 @@ RUN --mount=target=. \
 FROM dev AS lint
 ARG BUILDTAGS
 ARG TARGETPLATFORM
+ARG GOLANGCI_LINT_VERSION=1.43.0
 # install golangci-lint
-RUN wget -q https://github.com/golangci/golangci-lint/releases/download/v1.24.0/golangci-lint-1.24.0-$(echo $BUILDPLATFORM | sed 's/\//-/g').tar.gz -O - | tar -xzf - -C /usr/local/bin/ --strip-components=1 && chmod +x /usr/local/bin/golangci-lint
+RUN wget -q https://github.com/golangci/golangci-lint/releases/download/v${GOLANGCI_LINT_VERSION}/golangci-lint-${GOLANGCI_LINT_VERSION}-$(echo $BUILDPLATFORM | sed 's/\//-/g').tar.gz -O - | tar -xzf - -C /usr/local/bin/ --strip-components=1 && chmod +x /usr/local/bin/golangci-lint
 RUN --mount=target=. \
     --mount=target=/go/pkg,type=cache \
     --mount=target=/root/.cache,type=cache \
     CGO_ENABLED=0 \
-    golangci-lint run --build-tags "${BUILDTAGS}" ./... || true
+    golangci-lint run --build-tags "${BUILDTAGS}"
 
 FROM dev AS gobuild
 ARG BUILDTAGS
@@ -46,7 +47,6 @@ RUN --mount=target=. \
     --mount=target=/root/.cache,type=cache \
     --mount=target=/tmp/.ldflags,source=/tmp/.ldflags,from=version \
     set -ex; \
-    go mod download; \
     go build \
       -tags "${BUILDTAGS}" \
       -ldflags "$(cat /tmp/.ldflags)" \

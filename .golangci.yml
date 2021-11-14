@@ -1,0 +1,4 @@
+run:
+  tests: true
+  skip-dirs:
+    - driver/containerd
