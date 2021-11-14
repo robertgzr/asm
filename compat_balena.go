@@ -22,6 +22,11 @@ import (
 
 var balenalibRE = regexp.MustCompile(`FROM.*balenalib\/.*`)
 
+func balenaSkip() bool {
+	v, ok := os.LookupEnv("ASM_BALENA_ENABLED")
+	return ok && (v == "0" || v == "false" || v == "no")
+}
+
 func balenaPlatform(t *bake.Target) (machine, arch string, platform v1.Platform, err error) {
 	var fromEnv bool
 	machine, fromEnv = os.LookupEnv("ASM_BALENA_MACHINE_NAME")
@@ -240,6 +245,10 @@ func processBalenaYML(m map[string]*bake.Target, composeFilePath string) error {
 }
 
 func parseBalena(m map[string]*bake.Target, files []bake.File) error {
+	if balenaSkip() {
+		return nil
+	}
+
 	if len(m) == 0 || len(files) == 0 {
 		return nil
 	}
@@ -264,6 +273,10 @@ func parseBalena(m map[string]*bake.Target, files []bake.File) error {
 }
 
 func resolveBalena(bo map[string]build.Options, m map[string]*bake.Target) error {
+	if balenaSkip() {
+		return nil
+	}
+
 	lg := logrus.WithField("balena", "resolve")
 	for target, o := range bo {
 		machine, arch, platform, err := balenaPlatform(m[target])
