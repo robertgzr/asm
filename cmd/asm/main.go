@@ -15,11 +15,23 @@ import (
 
 	// _ "github.com/docker/buildx/driver/kubernetes"
 
+	"github.com/moby/buildkit/util/tracing/detect"
+	_ "github.com/moby/buildkit/util/tracing/detect/delegated"
+	_ "github.com/moby/buildkit/util/tracing/env"
+	"go.opentelemetry.io/otel"
+
 	"github.com/robertgzr/asm/config"
 	"github.com/robertgzr/asm/version"
 )
 
 type ctxKeyConfig struct{}
+
+func init() {
+	detect.ServiceName = "asm"
+
+	// do not log tracing errors to stdio
+	otel.SetErrorHandler(skipErrors{})
+}
 
 func main() {
 	cli.VersionPrinter = func(cx *cli.Context) {
@@ -75,3 +87,7 @@ func main() {
 		logrus.WithError(err).Fatalf("%s stopped", app.Name)
 	}
 }
+
+type skipErrors struct{}
+
+func (skipErrors) Handle(err error) {}

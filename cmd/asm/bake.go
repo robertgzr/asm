@@ -9,6 +9,7 @@ import (
 	"github.com/containerd/containerd/platforms"
 	"github.com/docker/buildx/bake"
 	"github.com/docker/buildx/util/progress"
+	"github.com/docker/buildx/util/tracing"
 	"github.com/sirupsen/logrus"
 	cli "github.com/urfave/cli/v2"
 
@@ -69,6 +70,14 @@ var bakeCommand = &cli.Command{
 
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
+
+		ctx, end, err := tracing.TraceCurrentCommand(ctx, "bake")
+		if err != nil {
+			return err
+		}
+		defer func() {
+			end(err)
+		}()
 
 		ctx2, cancelPrinter := context.WithCancel(context.TODO())
 		defer cancelPrinter()
