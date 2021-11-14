@@ -6,7 +6,10 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/containerd/containerd/platforms"
 	"github.com/docker/buildx/bake"
+	"github.com/docker/buildx/util/progress"
+	"github.com/sirupsen/logrus"
 	cli "github.com/urfave/cli/v2"
 
 	"github.com/robertgzr/asm"
@@ -20,10 +23,9 @@ var bakeCommand = &cli.Command{
 	Description: "build from a file",
 	Flags: []cli.Flag{
 		&cli.StringSliceFlag{
-			Name:     "file",
-			Aliases:  []string{"f"},
-			Usage:    "build definition file",
-			Required: true,
+			Name:    "file",
+			Aliases: []string{"f"},
+			Usage:   "build definition file",
 		},
 		&cli.StringSliceFlag{
 			Name:  "set",
@@ -43,28 +45,105 @@ var bakeCommand = &cli.Command{
 			Usage: "overwrite the build nodes",
 		},
 	},
-	Action: func(cx *cli.Context) error {
+	Action: func(cx *cli.Context) (err error) {
 		cfg := cx.Context.Value(ctxKeyConfig{}).(config.NodeGroup)
+		if len(cfg.Nodes) == 0 {
+			logrus.Debugf("node configuration: %+v", cfg)
+			return fmt.Errorf("missing node configuration")
+		}
+
+		if nodes := cx.StringSlice("nodes"); len(nodes) != 0 {
+			var filtered config.NodeGroup
+			for _, n := range cfg.Nodes {
+				for _, name := range nodes {
+					if n.Name == name {
+						filtered.Nodes = append(filtered.Nodes, n)
+					}
+				}
+			}
+			cfg = filtered
+		}
 
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
+
+		ctx2, cancelPrinter := context.WithCancel(context.TODO())
+		defer cancelPrinter()
+		printer := progress.NewPrinter(ctx2, os.Stderr, cx.String("progress"))
+		defer func() {
+			if printer != nil {
+				err1 := printer.Wait()
+				if err == nil {
+					err = err1
+				}
+			}
+		}()
 
 		targets := []string{"default"}
 		if cx.Args().Present() {
 			targets = cx.Args().Slice()
 		}
 
-		files, err := bake.ReadLocalFiles(cx.StringSlice("file"))
+		contextPathHash, _ := os.Getwd()
+		dis, err := asm.DriversForNodeGroup(ctx, &cfg, contextPathHash)
+		if err != nil {
+			return err
+		}
+		logrus.Debugf("resolved drivers: %+v", dis)
+
+		var (
+			url      string
+			defaults = map[string]string{
+				"BAKE_LOCAL_PLATFORM": platforms.DefaultString(),
+				"BAKE_CMD_CONTEXT":    "cwd://",
+			}
+		)
+
+		if len(targets) > 0 && bake.IsRemoteURL(targets[0]) {
+			url = targets[0]
+			targets = targets[1:]
+			if len(targets) > 0 && bake.IsRemoteURL(targets[0]) {
+				defaults["BAKE_CMD_CONTEXT"] = targets[0]
+				targets = targets[1:]
+			}
+		}
+
+		// set a default target
+		if len(targets) == 0 {
+			targets = []string{"default"}
+		}
+
+		var (
+			files []bake.File
+			inp   *bake.Input
+		)
+
+		if url != "" {
+			logrus.WithField("url", url).Debugf("pulling remote files")
+			files, inp, err = bake.ReadRemoteFiles(ctx, dis, url, cx.StringSlice("file"), printer)
+		} else {
+			files, err = bake.ReadLocalFiles(cx.StringSlice("file"))
+		}
+		if err != nil {
+			return fmt.Errorf("reading files failed: %w", err)
+		}
+
+		logrus.Debugf("resolved files: %+v", files)
+
+		m, err := asm.ReadTargets(ctx, files, targets, cx.StringSlice("set"), defaults)
 		if err != nil {
 			return err
 		}
 
-		m, err := asm.ReadTargets(ctx, files, targets, cx.StringSlice("set"))
-		if err != nil {
-			return err
-		}
+		logrus.Debugf("resolved targets: %+v", m)
 
 		if cx.Bool("print") {
+			// end printer early
+			if err := printer.Wait(); err != nil {
+				return fmt.Errorf("printer failed: %w", err)
+			}
+			printer = nil
+
 			dt, err := json.MarshalIndent(map[string]map[string]*bake.Target{"target": m}, "", "   ")
 			if err != nil {
 				return err
@@ -73,19 +152,9 @@ var bakeCommand = &cli.Command{
 			return nil
 		}
 
-		if len(cx.StringSlice("nodes")) != 0 {
-			var new config.NodeGroup
-			for _, n := range cfg.Nodes {
-				for _, name := range cx.StringSlice("nodes") {
-					if n.Name == name {
-						new.Nodes = append(new.Nodes, n)
-					}
-				}
-			}
-			cfg = new
+		if err := asm.Assemble(ctx, dis, m, inp, printer); err != nil {
+			return fmt.Errorf("assembly failed: %w", err)
 		}
-
-		contextPathHash, _ := os.Getwd()
-		return asm.Assemble(ctx, &cfg, m, cx.String("progress"), contextPathHash)
+		return nil
 	},
 }

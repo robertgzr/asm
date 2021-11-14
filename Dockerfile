@@ -5,7 +5,7 @@ ARG GO_VERSION=1.16
 
 FROM --platform=$BUILDPLATFORM tonistiigi/xx:golang AS xgo
 # base stage
-FROM --platform=$BUILDPLATFORM docker.io/library/golang:$GO_VERSION-alpine AS base
+FROM --platform=$BUILDPLATFORM docker.io/library/golang:${GO_VERSION}-alpine AS base
 RUN apk add -U --no-cache ca-certificates
 
 # development (build) stage
@@ -46,6 +46,7 @@ RUN --mount=target=. \
     --mount=target=/root/.cache,type=cache \
     --mount=target=/tmp/.ldflags,source=/tmp/.ldflags,from=version \
     set -ex; \
+    go mod download; \
     go build \
       -tags "${BUILDTAGS}" \
       -ldflags "$(cat /tmp/.ldflags)" \

@@ -3,7 +3,6 @@ package asm
 import (
 	"os"
 	"path"
-	"strconv"
 	"strings"
 
 	"github.com/docker/buildx/bake"
@@ -33,10 +32,9 @@ func expandTargets(c *bake.Config, pattern string) ([]string, error) {
 	return names, nil
 }
 
-func newOverrides(c *bake.Config, v []string) (map[string]*bake.Target, error) {
-	m := map[string]*bake.Target{}
+func newOverrides(c *bake.Config, v []string) (map[string]map[string]bake.Override, error) {
+	m := map[string]map[string]bake.Override{}
 	for _, v := range v {
-
 		parts := strings.SplitN(v, "=", 2)
 		keys := strings.SplitN(parts[0], ".", 3)
 		if len(keys) < 2 {
@@ -53,73 +51,40 @@ func newOverrides(c *bake.Config, v []string) (map[string]*bake.Target, error) {
 			return nil, err
 		}
 
+		kk := strings.SplitN(parts[0], ".", 2)
+
 		for _, name := range names {
 			t, ok := m[name]
 			if !ok {
-				t = &bake.Target{}
+				t = map[string]bake.Override{}
+				m[name] = t
 			}
 
+			o := t[kk[1]]
+
 			switch keys[1] {
-			case "context":
-				t.Context = &parts[1]
-			case "dockerfile":
-				t.Dockerfile = &parts[1]
+			case "output", "cache-to", "cache-from", "tags", "platform", "secrets", "ssh":
+				if len(parts) == 2 {
+					o.ArrValue = append(o.ArrValue, parts[1])
+				}
 			case "args":
 				if len(keys) != 3 {
 					return nil, errors.Errorf("invalid key %s, args requires name", parts[0])
 				}
-				if t.Args == nil {
-					t.Args = map[string]string{}
-				}
 				if len(parts) < 2 {
 					v, ok := os.LookupEnv(keys[2])
-					if ok {
-						t.Args[keys[2]] = v
+					if !ok {
+						continue
 					}
-				} else {
-					t.Args[keys[2]] = parts[1]
+					o.Value = v
 				}
-			case "labels":
-				if len(keys) != 3 {
-					return nil, errors.Errorf("invalid key %s, labels requires name", parts[0])
-				}
-				if t.Labels == nil {
-					t.Labels = map[string]string{}
-				}
-				t.Labels[keys[2]] = parts[1]
-			case "tags":
-				t.Tags = append(t.Tags, parts[1])
-			case "cache-from":
-				t.CacheFrom = append(t.CacheFrom, parts[1])
-			case "cache-to":
-				t.CacheTo = append(t.CacheTo, parts[1])
-			case "target":
-				s := parts[1]
-				t.Target = &s
-			case "secrets":
-				t.Secrets = append(t.Secrets, parts[1])
-			case "ssh":
-				t.SSH = append(t.SSH, parts[1])
-			case "platform":
-				t.Platforms = append(t.Platforms, parts[1])
-			case "output":
-				t.Outputs = append(t.Outputs, parts[1])
-			case "no-cache":
-				noCache, err := strconv.ParseBool(parts[1])
-				if err != nil {
-					return nil, errors.Errorf("invalid value %s for boolean key no-cache", parts[1])
-				}
-				t.NoCache = &noCache
-			case "pull":
-				pull, err := strconv.ParseBool(parts[1])
-				if err != nil {
-					return nil, errors.Errorf("invalid value %s for boolean key pull", parts[1])
-				}
-				t.Pull = &pull
+				fallthrough
 			default:
-				return nil, errors.Errorf("unknown key: %s", keys[1])
+				if len(parts) == 2 {
+					o.Value = parts[1]
+				}
 			}
-			m[name] = t
+			t[kk[1]] = o
 		}
 	}
 	return m, nil

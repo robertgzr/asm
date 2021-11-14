@@ -14,8 +14,8 @@ import (
 
 type targetMap map[string]*bake.Target
 
-func ReadTargets(ctx context.Context, files []bake.File, targets, overrides []string) (targetMap, error) {
-	m, err := bake.ReadTargets(ctx, files, targets, overrides)
+func ReadTargets(ctx context.Context, files []bake.File, targets, overrides []string, defaults map[string]string) (targetMap, error) {
+	m, _, err := bake.ReadTargets(ctx, files, targets, overrides, defaults)
 	if err != nil {
 		if !strings.Contains(err.Error(), "unsupported Compose file version") {
 			return nil, err
@@ -23,10 +23,11 @@ func ReadTargets(ctx context.Context, files []bake.File, targets, overrides []st
 		m = make(targetMap)
 	}
 
+	// handle v2 compose-file
 	for _, f := range files {
 		if strings.HasSuffix(f.Name, "docker-compose.yml") {
 			v := make(map[string]interface{})
-			if err := yaml.Unmarshal(f.Data, &v); err != nil {
+			if err := yaml.Unmarshal(f.Data, &v, yaml.DisallowUnknownFields); err != nil {
 				return nil, err
 			}
 			if verI, ok := v["version"]; ok {

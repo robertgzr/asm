@@ -100,7 +100,7 @@ func DriversForNodeGroup(ctx context.Context, ng *config.NodeGroup, contextPathH
 				// 	return err
 				// }
 
-				d, err := driver.GetDriver(ctx, "asm_buildkit_"+n.Name, factories[n.Driver], dockerapi, nil, nil, n.Flags, n.ConfigFile, n.DriverOpts, n.Platforms, contextPathHash)
+				d, err := driver.GetDriver(ctx, "asm_buildkit_"+n.Name, factories[n.Driver], dockerapi, nil, nil, n.Flags, n.Files, n.DriverOpts, n.Platforms, contextPathHash)
 				if err != nil {
 					logrus.WithField("driver", n.Name).Error(err)
 					di.Err = err

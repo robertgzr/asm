@@ -186,7 +186,7 @@ func processBalenaYML(m map[string]*bake.Target, composeFilePath string) error {
 				Debug("no balena.yml found")
 			return nil
 		}
-		return err
+		return fmt.Errorf("processing balena.yml: %w", err)
 	}
 
 	balenaDir := filepath.Dir(balenaYMLPath)
@@ -240,6 +240,10 @@ func processBalenaYML(m map[string]*bake.Target, composeFilePath string) error {
 }
 
 func parseBalena(m map[string]*bake.Target, files []bake.File) error {
+	if len(m) == 0 || len(files) == 0 {
+		return nil
+	}
+
 	for name, t := range m {
 		if t.Name == "" {
 			t.Name = name

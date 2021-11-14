@@ -2,6 +2,7 @@ package config
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -9,8 +10,23 @@ import (
 
 	"github.com/docker/buildx/store"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	"sigs.k8s.io/yaml"
 )
+
+func ConfigDir() (string, error) {
+	configDir, err := os.UserConfigDir()
+	if err != nil {
+		return "", err
+	}
+	asmDir := filepath.Join(configDir, "asm")
+	if _, err := os.Stat(asmDir); errors.Is(err, os.ErrNotExist) {
+		if err := os.MkdirAll(asmDir, os.ModeDir|os.ModePerm); err != nil {
+			return "", err
+		}
+	}
+	return asmDir, nil
+}
 
 type NodeGroup struct {
 	Nodes []Node
@@ -40,50 +56,58 @@ func load(dir string) string {
 
 func Load(fn string) (cfg NodeGroup, err error) {
 	if fn != "" {
-		goto exit
+		goto parseAndExit
 	}
 
 	// try local dir
 	if fn = load("."); fn != "" {
-		goto exit
+		goto parseAndExit
 	}
 
 	// try user config
-	if dir, err := os.UserConfigDir(); err != nil {
+	if dir, err := ConfigDir(); err != nil {
 		return cfg, err
 	} else {
-		if fn = load(filepath.Join(dir, "asm")); fn != "" {
-			goto exit
+		if fn = load(dir); fn != "" {
+			goto parseAndExit
 		}
 	}
 
 	err = errors.New("no config file found")
 	return
 
-exit:
+parseAndExit:
+	fn, err = filepath.Abs(fn)
+	if err != nil {
+		return cfg, err
+	}
+
+	logrus.WithField("path", fn).Debug("loading configuration")
 	return Parse(fn)
 }
 
 func Parse(fn string) (cfg NodeGroup, err error) {
-	var f io.Reader
-	f, err = os.Open(fn)
+	var b []byte
+	b, err = ioutil.ReadFile(fn)
 	if err != nil {
-		return
+		return cfg, err
 	}
 	switch filepath.Ext(fn) {
 	case ".yaml", ".yml":
-		var b []byte
-		b, err = ioutil.ReadAll(f)
+		b, err = yaml.YAMLToJSONStrict(b)
 		if err != nil {
-			return
+			return cfg, fmt.Errorf("error parsing yaml: %w", err)
 		}
-		err = yaml.Unmarshal(b, &cfg)
+		fallthrough
 	case ".json":
-		err = json.NewDecoder(f).Decode(&cfg)
+		err = json.Unmarshal(b, &cfg)
+		if err != nil {
+			return cfg, fmt.Errorf("error parsing json: %w", err)
+		}
 	default:
 		err = errors.Errorf("format not supported: %s", filepath.Ext(fn))
 	}
-	return
+	return cfg, err
 }
 
 func Write(w io.Writer, cfg NodeGroup, format string) (err error) {
