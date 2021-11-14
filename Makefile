@@ -1,6 +1,9 @@
 BINARY ?= asm
+export ASM_BINARY = $(abspath ${BINARY})
 
-buildx = $(if $(shell test -x ${BINARY} && echo 1),${BINARY},docker buildx)
+# --- CONTAINER
+
+buildx = $(if $(shell test -x ${ASM_BINARY} && echo 1),${ASM_BINARY},docker buildx)
 
 binary:
 	$(call buildx) bake -f build.hcl
@@ -11,9 +14,7 @@ image:
 lint:
 	$(call buildx) bake -f build.hcl lint
 
-# ---
-
-export ASM_BINARY = $(abspath ${BINARY})
+# --- LOCAL
 
 debug: BUILDTAGS ?= osusergo netgo static_build balena podman
 debug:
@@ -23,7 +24,7 @@ install: PREFIX ?= /usr/local
 install:
 	install -t $(PREFIX)/bin/ asm
 
-# ----
+# ---- TEST
 
 test: debug
 	$(MAKE) -C $@ all

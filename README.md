@@ -7,17 +7,15 @@
 * easy driver configuration
 
 * _for now_ without the kubernetes driver
-* with a podman driver
+* with a [podman](https://podman.io/) driver
 
-## via cli
-
+## usage
+### via cli
 ```
 asm gen docker > asm.yml
 asm bake -f compose.yaml
 ```
-
-## via container image
-
+### via container image
 ```
 docker run --rm -it \
 	--mount type=bind,src=${PWD}/asm.yml:/run/asm/asm.yml:ro \
@@ -26,20 +24,9 @@ docker run --rm -it \
 		bake -f ompose.yaml
 ```
 
+## podman
 
-## building
-
-```
-make binary
-make image
-```
-
-or
-
-```
-DOCKER_BUILDKIT=1 docker build --target=binary --output type=local,dest=. .
-DOCKER_BUILDKIT=1 docker build --target=image --tag robertgzr/asm:latest .
-```
+The podman driver, relies on the binary being available in your `PATH`.
 
 ## balena
 
