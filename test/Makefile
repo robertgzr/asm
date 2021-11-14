@@ -1,4 +1,4 @@
-ASM_OPTS ?= --config=${PWD}/asm.yml
+ASM_OPTS ?= --config=${CURDIR}/asm.yml --debug
 
 .PHONY: all
 all: default balena

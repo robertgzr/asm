@@ -27,6 +27,8 @@ docker run --rm -it \
 ## podman
 
 The podman driver, relies on the binary being available in your `PATH`.
+When using rootless podman, the driver needs to have the `rootless: true` option.
+See https://github.com/moby/buildkit/blob/master/docs/rootless.md
 
 ## balena
 

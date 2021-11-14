@@ -32,23 +32,30 @@ func (f *factory) New(ctx context.Context, cfg driver.InitConfig) (driver.Driver
 	for k, v := range cfg.DriverOpts {
 		switch {
 		case k == "network":
-			return nil, fmt.Errorf("option %q not implemented", k)
 			// d.netMode = v
 			// if v == "host" {
 			// 	d.InitConfig.BuildkitFlags = append(d.InitConfig.BuildkitFlags, "--allow-insecure-entitlement=network.host")
 			// }
+			return nil, fmt.Errorf("option %q not implemented", k)
+
 		case k == "image":
 			d.image = v
+
 		case k == "cgroup-parent":
+			// d.cgroupParent = v
 			return nil, fmt.Errorf("option %q not implemented", k)
-		// d.cgroupParent = v
+
+		case k == "rootless":
+			d.rootless = true
+
 		case strings.HasPrefix(k, "env."):
-			return nil, fmt.Errorf("option %q not implemented", k)
 			// envName := strings.TrimPrefix(k, "env.")
 			// if envName == "" {
 			// 	return nil, errors.Errorf("invalid env option %q, expecting env.FOO=bar", k)
 			// }
 			// d.env = append(d.env, fmt.Sprintf("%s=%s", envName, v))
+			return nil, fmt.Errorf("option %q not implemented", k)
+
 		default:
 			return nil, fmt.Errorf("invalid driver option %s for podman driver", k)
 		}

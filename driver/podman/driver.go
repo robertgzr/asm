@@ -25,7 +25,10 @@ var volumeStateSuffix = "_state"
 type Driver struct {
 	factory driver.Factory
 	driver.InitConfig
-	image string
+
+	image        string
+	rootless     bool
+	cgroupParent string
 }
 
 func (d *Driver) Factory() driver.Factory {
@@ -59,7 +62,13 @@ func (d *Driver) Bootstrap(ctx context.Context, l progress.Logger) error {
 }
 
 func (d *Driver) create(ctx context.Context, l progress.SubLogger) error {
-	imageName := "docker.io/" + bkimage.DefaultImage
+	var imageName string
+	if d.rootless {
+		imageName = "docker.io/" + bkimage.DefaultRootlessImage
+	} else {
+		imageName = "docker.io/" + bkimage.DefaultImage
+	}
+
 	if d.image != "" {
 		imageName = d.image
 	}
@@ -71,16 +80,41 @@ func (d *Driver) create(ctx context.Context, l progress.SubLogger) error {
 	}
 
 	createArgs := []string{
-		"--log-level", podman.LogLevel.String(),
+		"--log-level=" + podman.LogLevel.String(),
 		"create",
-		"--name", d.Name,
-		"--privileged",
-		"--userns=host",
+		"--name=" + d.Name,
 		"--mount=type=volume,source=" + d.Name + volumeStateSuffix + ",target=/var/lib/buildkit",
 	}
+
+	if d.rootless {
+		createArgs = append(createArgs,
+			"--security-opt=seccomp=unconfined",
+			"--security-opt=apparmor=unconfined",
+			"--security-opt=systempaths=unconfined",
+			"--device=/dev/fuse",
+		)
+	} else {
+		createArgs = append(createArgs,
+			"--privileged",
+			"--userns=host",
+		)
+	}
+
+	// TODO $(podman info | yq read - host.cgroupManager) == "cgroupfs" {
+	// Place all buildkit containers inside this cgroup by default so limits can be attached
+	// to all build activity on the host.
+	cgroupParent := "/docker/buildx"
+	if d.cgroupParent != "" {
+		cgroupParent = d.cgroupParent
+	}
+	createArgs = append(createArgs, "--cgroup-parent="+cgroupParent)
+	// }
+
 	// TODO env
 	// TODO network
 	createArgs = append(createArgs, imageName)
+
+	l.Log(2, []byte(fmt.Sprintf("create: %+v", createArgs)))
 
 	return l.Wrap("creating container "+d.Name, func() error {
 		var stderr strings.Builder
