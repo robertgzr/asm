@@ -73,8 +73,8 @@ func main() {
 		if err != nil {
 			return errors.Wrap(err, "loading config")
 		}
-		cx.Context = context.WithValue(cx.Context, ctxKeyConfig{}, cfg)
 
+		cx.Context = context.WithValue(cx.Context, ctxKeyConfig{}, cfg)
 		return nil
 	}
 

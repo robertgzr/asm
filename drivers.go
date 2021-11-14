@@ -15,6 +15,10 @@ import (
 )
 
 func NewDockerClient(host string, opts map[string]string) (dockerclient.APIClient, error) {
+	if host == "" {
+		return nil, nil
+	}
+
 	clientOpts := []dockerclient.Opt{
 		dockerclient.WithHost(host),
 	}

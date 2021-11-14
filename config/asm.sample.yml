@@ -1,10 +1,20 @@
-Nodes:
-- ConfigFile: ""
-  Driver: docker
-  DriverOpts: null
-  Endpoint: unix:///var/run/docker.sock
-  Flags: null
-  Name: docker daemon
-  Platforms:
+nodes:
+- name: docker
+  driver: docker
+  endpoint: unix:///var/run/docker.sock
+  platforms:
+  - architecture: amd64
+    os: linux
+
+- name: docker-container
+  driver: docker-container
+  endpoint: unix:///var/run/docker.sock
+  platforms:
+  - architecture: amd64
+    os: linux
+
+- name: podman
+  driver: podman
+  platforms:
   - architecture: amd64
     os: linux

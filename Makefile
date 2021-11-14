@@ -15,7 +15,7 @@ lint:
 
 export ASM_BINARY = $(abspath ${BINARY})
 
-debug: BUILDTAGS ?= balena osusergo netgo static_build
+debug: BUILDTAGS ?= osusergo netgo static_build balena podman
 debug:
 	CGO_ENABLED=0 go build -tags "${BUILDTAGS}" -o ${ASM_BINARY} ./cmd/asm
 

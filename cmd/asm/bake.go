@@ -49,9 +49,10 @@ var bakeCommand = &cli.Command{
 	Action: func(cx *cli.Context) (err error) {
 		cfg := cx.Context.Value(ctxKeyConfig{}).(config.NodeGroup)
 		if len(cfg.Nodes) == 0 {
-			logrus.Debugf("node configuration: %+v", cfg)
 			return fmt.Errorf("missing node configuration")
 		}
+
+		logrus.Debugf("node configuration: %+v", cfg)
 
 		if nodes := cx.StringSlice("nodes"); len(nodes) != 0 {
 			var filtered config.NodeGroup

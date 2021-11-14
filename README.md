@@ -7,6 +7,7 @@
 * easy driver configuration
 
 * _for now_ without the kubernetes driver
+* with a podman driver
 
 ## via cli
 

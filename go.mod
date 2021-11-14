@@ -4,15 +4,16 @@ go 1.16
 
 require (
 	github.com/containerd/containerd v1.5.5
+	github.com/containers/toolbox v0.0.0-20210626174832-0bdfa53bb2ce
 	github.com/docker/docker v20.10.7+incompatible
 	github.com/opencontainers/image-spec v1.0.2-0.20210819154149-5ad6f50d6283
 	github.com/opencontainers/runtime-spec v1.0.3-0.20210326190908-1c3f411f0417
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.8.1
 	github.com/urfave/cli/v2 v2.3.0
+	go.opentelemetry.io/otel v1.0.0-RC1
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
 	sigs.k8s.io/yaml v1.2.0
-	go.opentelemetry.io/otel v1.0.0-RC1
 )
 
 // NOTE: make sure these are in sync with buildx
@@ -31,3 +32,5 @@ replace (
 )
 
 replace github.com/robertgzr/asm => ./
+
+replace github.com/containers/toolbox => github.com/containers/toolbox/src v0.0.0-20210626174832-0bdfa53bb2ce

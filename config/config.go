@@ -37,8 +37,7 @@ type Node struct {
 	Driver string
 }
 
-func load(dir string) string {
-	var fp string
+func load(dir string) (fp string) {
 	fp = filepath.Join(dir, "asm.yml")
 	if _, err := os.Stat(fp); err == nil {
 		return fp
@@ -60,8 +59,10 @@ func Load(fn string) (cfg NodeGroup, err error) {
 	}
 
 	// try local dir
-	if fn = load("."); fn != "" {
-		goto parseAndExit
+	if cwd, err := os.Getwd(); err == nil {
+		if fn = load(cwd); fn != "" {
+			goto parseAndExit
+		}
 	}
 
 	// try user config
