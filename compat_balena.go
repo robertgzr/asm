@@ -15,9 +15,9 @@ import (
 	"github.com/containerd/containerd/platforms"
 	"github.com/docker/buildx/bake"
 	"github.com/docker/buildx/build"
-	"github.com/goccy/go-yaml"
 	"github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/sirupsen/logrus"
+	"sigs.k8s.io/yaml"
 )
 
 var balenalibRE = regexp.MustCompile(`FROM.*balenalib\/.*`)
@@ -178,18 +178,21 @@ func processBalenaYML(m map[string]*bake.Target, composeFilePath string) error {
 		return fmt.Errorf("detecting project root at %s: %w", composeFilePath, err)
 	}
 	balenaYMLPath := filepath.Join(filepath.Dir(composeFileAbs), ".balena/balena.yml")
-	f, err := os.Open(balenaYMLPath)
-	if errors.Is(err, os.ErrNotExist) {
-		logrus.
-			WithField("balena", "balena.yml").
-			Debug("no balena.yml found")
-		return nil
+	b, err := ioutil.ReadFile(balenaYMLPath)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			logrus.
+				WithField("balena", "balena.yml").
+				Debug("no balena.yml found")
+			return nil
+		}
+		return err
 	}
 
 	balenaDir := filepath.Dir(balenaYMLPath)
 
 	var balenaYML BalenaYML
-	if err := yaml.NewDecoder(f).Decode(&balenaYML); err != nil {
+	if err := yaml.Unmarshal(b, &balenaYML); err != nil {
 		return err
 	}
 	// balena.yml > build-secrets
