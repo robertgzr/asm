@@ -61,6 +61,9 @@ var bakeCommand = &cli.Command{
 					}
 				}
 			}
+			if len(filtered.Nodes) == 0 {
+				return fmt.Errorf("no nodes left")
+			}
 			cfg = filtered
 		}
 
