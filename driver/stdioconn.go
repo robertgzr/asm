@@ -2,11 +2,10 @@ package internal
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"net"
 	"time"
-
-	"github.com/sirupsen/logrus"
 )
 
 type stdioAddr struct {
@@ -57,13 +56,11 @@ func (c *stdioConn) Write(b []byte) (n int, err error) {
 // Close closes the connection.
 // Any blocked Read or Write operations will be unblocked and return errors.
 func (c *stdioConn) Close() error {
-	logrus.Warn("close")
-	// if err := c.stdout.Close(); err != nil {
-	// 	return err
-	// }
-	// if err := c.stdin.Close(); err != nil {
-	// 	return err
-	// }
+	err1 := c.stdout.Close()
+	err2 := c.stdin.Close()
+	if err1 != nil || err2 != nil {
+		return fmt.Errorf("closing: %s / %s", err1, err2)
+	}
 	return nil
 }
 

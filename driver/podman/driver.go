@@ -197,12 +197,10 @@ func (d *Driver) Client(ctx context.Context) (*client.Client, error) {
 		return nil, err
 	}
 	go func(p *os.Process) {
-		logrus.Warnf("%+v", p)
-		ps, err := p.Wait()
+		_, err := p.Wait()
 		if err != nil {
 			panic(err)
 		}
-		logrus.Warnf("%+v", ps)
 	}(p)
 	return client.New(ctx, "", client.WithContextDialer(func(_ context.Context, addr string) (net.Conn, error) {
 		return conn, nil
