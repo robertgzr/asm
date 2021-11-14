@@ -2,11 +2,10 @@ package asm
 
 import (
 	"context"
+	"os"
 
 	"github.com/docker/buildx/build"
 	"github.com/docker/buildx/driver"
-	dockercontext "github.com/docker/cli/cli/context"
-	"github.com/docker/cli/cli/context/docker"
 	dockerclient "github.com/docker/docker/client"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -16,36 +15,53 @@ import (
 )
 
 func NewDockerClient(host string, opts map[string]string) (dockerclient.APIClient, error) {
-	ep := docker.Endpoint{
-		EndpointMeta: docker.EndpointMeta{
-			Host: host,
-		},
+	clientOpts := []dockerclient.Opt{
+		dockerclient.WithHost(host),
 	}
 
+	if version, ok := os.LookupEnv("DOCKER_API_VERSION"); ok {
+		clientOpts = append(clientOpts, dockerclient.WithVersion(version))
+	} else {
+		clientOpts = append(clientOpts, dockerclient.WithAPIVersionNegotiation())
+	}
+
+	var tls bool
 	if opts != nil {
 		caPath, haveCA := opts["ca"]
 		certPath, haveCert := opts["cert"]
 		keyPath, haveKey := opts["key"]
 		if haveCA && haveCert && haveKey {
-			var err error
-			ep.TLSData, err = dockercontext.TLSDataFromFiles(caPath, certPath, keyPath)
-			if err != nil {
-				return nil, err
-			}
-			ep.EndpointMeta.SkipTLSVerify = false
+			clientOpts = append(clientOpts, dockerclient.WithTLSClientConfig(caPath, certPath, keyPath))
 			// FIXME remove those to not confuse the docker-container driver
 			delete(opts, "ca")
 			delete(opts, "cert")
 			delete(opts, "key")
 		}
+		tls = true
 	}
 
-	clientOpts, err := ep.ClientOpts()
+	logrus.
+		WithField("tls", tls).
+		WithField("host", host).
+		Debug("connecting to endpoint")
+
+	c, err := dockerclient.NewClientWithOpts(clientOpts...)
 	if err != nil {
 		return nil, err
 	}
-	logrus.WithField("tls_verify", !ep.EndpointMeta.SkipTLSVerify).Debugf("driver: connecting to %s", host)
-	return dockerclient.NewClientWithOpts(clientOpts...)
+
+	// test connection and retrieve docker version
+	info, err := c.Info(context.TODO())
+	if err != nil {
+		return nil, err
+	}
+	logrus.
+		WithField("tls", tls).
+		WithField("host", host).
+		WithField("docker_version", info.ServerVersion).
+		Debug("connected")
+
+	return c, nil
 }
 
 // func NewKubernetesClient(context string) (driver.KubeClientConfig, error) {
@@ -83,6 +99,12 @@ func DriversForNodeGroup(ctx context.Context, ng *config.NodeGroup, contextPathH
 					Platform: n.Platforms,
 				}
 				defer func() {
+					if di.Err != nil {
+						logrus.
+							WithField("driver", n.Driver).
+							WithField("name", n.Name).
+							Error(di.Err)
+					}
 					dis[i] = di
 				}()
 
@@ -91,8 +113,6 @@ func DriversForNodeGroup(ctx context.Context, ng *config.NodeGroup, contextPathH
 					di.Err = err
 					return nil
 				}
-				// TODO: replace with dockerclient.WithAPIVersionNegotiation option in clientForEndpoint
-				dockerapi.NegotiateAPIVersion(ctx)
 
 				// var kcc driver.KubeClientConfig
 				// kcc, err = NewKubernetesClient(n.Endpoint)

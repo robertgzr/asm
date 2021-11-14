@@ -4,7 +4,6 @@ go 1.16
 
 require (
 	github.com/containerd/containerd v1.5.5
-	github.com/docker/cli v20.10.8+incompatible
 	github.com/docker/docker v20.10.7+incompatible
 	github.com/opencontainers/image-spec v1.0.2-0.20210819154149-5ad6f50d6283
 	github.com/opencontainers/runtime-spec v1.0.3-0.20210326190908-1c3f411f0417
@@ -19,6 +18,7 @@ require (
 require (
 	github.com/docker/buildx v0.7.0
 	github.com/moby/buildkit v0.9.1-0.20211019185819-8778943ac3da
+// github.com/moby/buildkit v0.9.1
 )
 
 replace (
